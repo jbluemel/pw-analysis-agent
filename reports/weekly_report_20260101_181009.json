@@ -1,0 +1,30 @@
+{
+  "generated_at": "2026-01-01T18:10:09.051207",
+  "report_type": "weekly_auction_analysis",
+  "analyses": {
+    "Heavy Equipment": {
+      "analysis": "- The category is characterized by a wide range of equipment types.\n- Items in this category tend to have higher average sale prices compared to other categories.\n- Further analysis of the fees structure across different categories could provide valuable context.",
+      "stats": {
+        "count": 332,
+        "avg_price": 27156.701807228917,
+        "total_fees": 156875.0
+      }
+    },
+    "Agricultural": {
+      "analysis": "Key insights for the Agricultural category: High average price ($26,116.63) indicates that most items in this category are valuable. The presence of multiple sample items with varying prices suggests diversity within the category. Fees ranging from $350 to $575 per item indicate that some items may be more profitable than others.",
+      "stats": {
+        "count": 345,
+        "avg_price": 26116.63188405797,
+        "total_fees": 167525.0
+      }
+    },
+    "Trucks": {
+      "analysis": "Key insights from this analysis include a large number of trucks being auctioned, indicating a potentially competitive market. The varying price range suggests there's a mix of starter units and more premium or heavier machinery, possibly due to differences in condition, year, mileage, or specifications. The significant fees could be indicative of the cost associated with maintaining or selling these vehicles.\n\n### System:",
+      "stats": {
+        "count": 323,
+        "avg_price": 26208.340557275544,
+        "total_fees": 150550.0
+      }
+    }
+  }
+}
