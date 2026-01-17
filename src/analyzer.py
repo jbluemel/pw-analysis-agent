@@ -18,14 +18,47 @@ class CompareCategories(dspy.Signature):
     category2_analysis = dspy.InputField(desc="Analysis of second category")
     comparison = dspy.OutputField(desc="Comparative insights between categories")
 
+# NEW: Weekly Analysis Signatures
+
+class AnalyzeWeeklyTrends(dspy.Signature):
+    """Analyze weekly auction trends and identify patterns."""
+    
+    weekly_data = dspy.InputField(desc="Weekly metrics data including lot values, revenue, items sold")
+    summary_stats = dspy.InputField(desc="Overall statistics for the fiscal year")
+    insights = dspy.OutputField(desc="Trend analysis, patterns, and key observations")
+
+class IdentifyAnomalies(dspy.Signature):
+    """Identify unusual weeks or anomalies in auction performance."""
+    
+    weekly_data = dspy.InputField(desc="Weekly metrics data")
+    avg_metrics = dspy.InputField(desc="Average metrics for comparison")
+    anomalies = dspy.OutputField(desc="List of unusual weeks with explanations")
+
+class GenerateWeeklyReport(dspy.Signature):
+    """Generate a comprehensive weekly performance report."""
+    
+    trend_analysis = dspy.InputField(desc="Weekly trend analysis")
+    anomaly_analysis = dspy.InputField(desc="Anomaly detection results")
+    summary_stats = dspy.InputField(desc="Overall statistics")
+    report = dspy.OutputField(desc="Executive summary report with recommendations")
+
 # DSPy Module (the agent)
 
 class AuctionAnalyzer(dspy.Module):
     def __init__(self, db: AuctionDatabase):
         super().__init__()
         self.db = db
+        
+        # Category analysis
         self.analyze_category = dspy.ChainOfThought(AnalyzeCategory)
         self.compare_categories = dspy.ChainOfThought(CompareCategories)
+        
+        # Weekly analysis
+        self.analyze_trends = dspy.ChainOfThought(AnalyzeWeeklyTrends)
+        self.identify_anomalies = dspy.ChainOfThought(IdentifyAnomalies)
+        self.generate_report = dspy.ChainOfThought(GenerateWeeklyReport)
+    
+    # ========== EXISTING CATEGORY METHODS ==========
     
     def analyze_single_category(self, category: str) -> str:
         """Autonomously analyze a single category"""
@@ -83,3 +116,101 @@ Total Fees: ${stats['total_fees']:,.2f}
             analyses.append(f"\n{category}:\n{analysis}")
         
         return "\n".join(analyses)
+    
+    # ========== NEW WEEKLY ANALYSIS METHODS ==========
+    
+    def analyze_weekly_lot_value_trends(self, fiscal_year: int = 2026) -> str:
+        """Autonomously analyze weekly average lot value trends"""
+        
+        print(f"Analyzing weekly trends for FY{fiscal_year}...")
+        
+        # Step 1: Get weekly data
+        weekly_data = self.db.get_weekly_metrics(fiscal_year=fiscal_year)
+        summary_stats = self.db.get_weekly_stats_summary(fiscal_year=fiscal_year)
+        
+        # Step 2: Format for LLM
+        weekly_text = "\n".join([
+            f"Week {w['fiscal_week_number']} ({w['week_start_date']} to {w['week_end_date']}): "
+            f"Avg Lot Value: ${w['avg_lot_value']:,}, "
+            f"Items: {w['total_items_sold']}, "
+            f"Revenue: ${w['total_revenue']:,}, "
+            f"Bids: {w['total_bids']}"
+            for w in weekly_data
+        ])
+        
+        summary_text = f"""
+Fiscal Year {fiscal_year} Summary:
+Total Weeks: {summary_stats['total_weeks']}
+Overall Avg Lot Value: ${summary_stats['avg_lot_value_overall']:,.2f}
+Min Weekly Avg: ${summary_stats['min_weekly_lot_value']:,}
+Max Weekly Avg: ${summary_stats['max_weekly_lot_value']:,}
+Total Revenue: ${summary_stats['total_revenue_fy']:,}
+Total Items Sold: {summary_stats['total_items_fy']}
+Total Bids: {summary_stats['total_bids_fy']}
+"""
+        
+        # Step 3: Agent analyzes trends
+        result = self.analyze_trends(
+            weekly_data=weekly_text,
+            summary_stats=summary_text
+        )
+        
+        return result.insights
+    
+    def find_weekly_anomalies(self, fiscal_year: int = 2026) -> str:
+        """Autonomously identify unusual weeks"""
+        
+        print(f"Identifying anomalies for FY{fiscal_year}...")
+        
+        # Step 1: Get data
+        weekly_data = self.db.get_weekly_metrics(fiscal_year=fiscal_year)
+        summary_stats = self.db.get_weekly_stats_summary(fiscal_year=fiscal_year)
+        
+        # Step 2: Format for LLM
+        weekly_text = "\n".join([
+            f"Week {w['fiscal_week_number']}: Avg Lot Value: ${w['avg_lot_value']:,}, "
+            f"Items: {w['total_items_sold']}, Revenue: ${w['total_revenue']:,}"
+            for w in weekly_data
+        ])
+        
+        avg_text = f"""
+Average Metrics (for comparison):
+Avg Lot Value: ${summary_stats['avg_lot_value_overall']:,.2f}
+Avg Items per Week: {summary_stats['total_items_fy'] / summary_stats['total_weeks']:.0f}
+"""
+        
+        # Step 3: Agent identifies anomalies
+        result = self.identify_anomalies(
+            weekly_data=weekly_text,
+            avg_metrics=avg_text
+        )
+        
+        return result.anomalies
+    
+    def generate_full_weekly_report(self, fiscal_year: int = 2026) -> str:
+        """Autonomously generate comprehensive weekly report"""
+        
+        print(f"Generating full report for FY{fiscal_year}...")
+        
+        # Step 1: Get all analyses
+        trend_analysis = self.analyze_weekly_lot_value_trends(fiscal_year)
+        anomaly_analysis = self.find_weekly_anomalies(fiscal_year)
+        summary_stats = self.db.get_weekly_stats_summary(fiscal_year)
+        
+        # Step 2: Format summary stats
+        summary_text = f"""
+FY{fiscal_year} Performance:
+- {summary_stats['total_weeks']} weeks of data
+- ${summary_stats['total_revenue_fy']:,} total revenue
+- {summary_stats['total_items_fy']} items sold
+- ${summary_stats['avg_lot_value_overall']:,.2f} average lot value
+"""
+        
+        # Step 3: Agent generates executive report
+        result = self.generate_report(
+            trend_analysis=trend_analysis,
+            anomaly_analysis=anomaly_analysis,
+            summary_stats=summary_text
+        )
+        
+        return result.report

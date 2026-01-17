@@ -78,6 +78,71 @@ class AuctionDatabase:
             cur.execute(query)
             return [row[0] for row in cur.fetchall()]
     
+    # NEW: Weekly Metrics Methods
+    
+    def get_weekly_metrics(
+        self, 
+        fiscal_year: Optional[int] = None,
+        start_week: Optional[int] = None,
+        end_week: Optional[int] = None,
+        limit: Optional[int] = None
+    ) -> List[Dict]:
+        """Query weekly metrics with optional filters"""
+        
+        query = """
+            SELECT 
+                fiscal_week_number, fiscal_year,
+                week_start_date, week_end_date,
+                total_items_sold, avg_lot_value,
+                total_revenue, total_fees, total_bids
+            FROM weekly_metrics
+            WHERE 1=1
+        """
+        params = []
+        
+        if fiscal_year:
+            query += " AND fiscal_year = %s"
+            params.append(fiscal_year)
+        
+        if start_week:
+            query += " AND fiscal_week_number >= %s"
+            params.append(start_week)
+        
+        if end_week:
+            query += " AND fiscal_week_number <= %s"
+            params.append(end_week)
+        
+        query += " ORDER BY week_start_date"
+        
+        if limit:
+            query += " LIMIT %s"
+            params.append(limit)
+        
+        with self.conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(query, params)
+            return cur.fetchall()
+    
+    def get_weekly_stats_summary(self, fiscal_year: int = 2026) -> Dict:
+        """Get summary statistics for weekly metrics"""
+        
+        query = """
+            SELECT 
+                COUNT(*) as total_weeks,
+                AVG(avg_lot_value) as avg_lot_value_overall,
+                MIN(avg_lot_value) as min_weekly_lot_value,
+                MAX(avg_lot_value) as max_weekly_lot_value,
+                SUM(total_revenue) as total_revenue_fy,
+                SUM(total_fees) as total_fees_fy,
+                SUM(total_items_sold) as total_items_fy,
+                SUM(total_bids) as total_bids_fy
+            FROM weekly_metrics
+            WHERE fiscal_year = %s
+        """
+        
+        with self.conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(query, [fiscal_year])
+            return cur.fetchone()
+    
     def close(self):
         """Close database connection"""
         self.conn.close()
